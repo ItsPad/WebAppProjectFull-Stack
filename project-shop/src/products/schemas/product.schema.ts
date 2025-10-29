@@ -13,10 +13,10 @@ export class Product {
   price: number;
 
   @Prop()
-  description: string;
+  desc: string;
 
   @Prop()
-  amount: number;
+  image: string;
 }
 
 export const ProductSchema = SchemaFactory.createForClass(Product);
