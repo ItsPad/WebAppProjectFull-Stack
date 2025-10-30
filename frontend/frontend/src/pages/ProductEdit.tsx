@@ -2,6 +2,15 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import type { Product } from '../types'
+// 1. Import Hooks ของ Redux
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../app/store';
+import {
+  addNewProduct,
+  updateExistingProduct,
+  deleteProduct,
+} from '../features/productSlice';
+
 
 const emptyProduct: Product = { name: '', price: 0, description: '', imageUrl: '', amount: 0 } // 👈 เพิ่ม amount: 0
 
@@ -9,8 +18,9 @@ export default function ProductEdit() {
   const { id } = useParams()
   const isNew = id === 'new' || !id
   const navigate = useNavigate()
+  const dispatch = useDispatch<AppDispatch>();
 
-  const [model, setModel] = useState<Product>(emptyProduct)
+  const [model, setModel] = useState<Product>(emptyProduct);
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -43,28 +53,30 @@ export default function ProductEdit() {
     if (!id) return;
     if (!confirm('ลบสินค้านี้หรือไม่?')) return;
     try {
-      await api.deleteProduct(String(id));
+      // 5. เปลี่ยน api.deleteProduct เป็น dispatch(deleteProduct(...))
+      await dispatch(deleteProduct(String(id))).unwrap();
       navigate('/');
-    } catch (e:any) {
+    } catch (e: any) {
       alert('ลบไม่สำเร็จ: ' + e.message);
     }
-  }
-const save = async () => {
-    try {
-      setSaving(true)
-      if (isNew) {
-        const created = await api.createProduct(model)
-        navigate(`/`)
-      } else {
-        await api.updateProduct({ ...model, _id: (model._id ?? String(id)) })
-        navigate(`/`)
+  };
+  const save = async () => {
+      try {
+        setSaving(true);
+        if (isNew) {
+          // 6. เปลี่ยน api.createProduct เป็น dispatch(addNewProduct(...))
+          await dispatch(addNewProduct(model)).unwrap();
+        } else {
+          // 7. เปลี่ยน api.updateProduct เป็น dispatch(updateExistingProduct(...))
+          await dispatch(updateExistingProduct({ ...model, _id: (model._id ?? String(id)) })).unwrap();
+        }
+        navigate(`/`);
+      } catch (e: any) {
+        alert('บันทึกไม่สำเร็จ: ' + e.message);
+      } finally {
+        setSaving(false);
       }
-    } catch (e:any) {
-      alert('บันทึกไม่สำเร็จ: ' + e.message)
-    } finally {
-      setSaving(false)
-    }
-  }
+    };
 
   if (loading) return <div className="container-narrow py-10">กำลังโหลด...</div>
   if (error) return <div className="container-narrow py-10 text-red-600">เกิดข้อผิดพลาด: {error}</div>

@@ -1,40 +1,44 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { api } from '../api'
-import type { Product } from '../types'
+import { useEffect } from 'react'; // (ลบ useState ออก)
+import { Link } from 'react-router-dom';
+// 1. Import Hooks ของ Redux
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState, AppDispatch } from '../app/store';
+import { fetchProducts, deleteProduct } from '../features/productSlice';
+import type { Product } from '../types';
 
 export default function ProductList() {
-  const [items, setItems] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  // 3. ลบ useState ของ items, loading, error ทิ้ง
 
-  const load = async () => {
-    try {
-      setLoading(true)
-      const data = await api.listProducts()
-      setItems(data)
-    } catch (e:any) {
-      setError(e.message || 'โหลดข้อมูลไม่สำเร็จ')
-    } finally {
-      setLoading(false)
+  // 4. ดึง State จาก Redux Store
+  const dispatch = useDispatch<AppDispatch>();
+  const items = useSelector((state: RootState) => state.products.items);
+  const loading = useSelector((state: RootState) => state.products.loading);
+  const error = useSelector((state: RootState) => state.products.error);
+
+  // 5. เปลี่ยน load() ให้ 'dispatch' action
+  useEffect(() => {
+    // เราจะ dispatch 'fetchProducts' แค่ครั้งแรกที่โหลด
+    if (loading === 'idle') {
+      dispatch(fetchProducts());
     }
-  }
-
-  useEffect(() => { load() }, [])
+  }, [loading, dispatch]);
 
   const onDelete = async (id?: string | number) => {
-    if (!id) return
-    if (!confirm('ลบสินค้านี้หรือไม่?')) return
+    if (!id) return;
+    if (!confirm('ลบสินค้านี้หรือไม่?')) return;
     try {
-      await api.deleteProduct(String(id))
-      setItems(prev => prev.filter(p => (p._id ?? p.id) !== id))
-    } catch (e:any) {
-      alert('ลบไม่สำเร็จ: ' + e.message)
+      // 6. เปลี่ยน api.deleteProduct เป็น dispatch(deleteProduct(...))
+      await dispatch(deleteProduct(String(id))).unwrap(); 
+      // .unwrap() จะช่วยให้เรา catch error ได้ (ถ้าต้องการ)
+    } catch (e: any) {
+      alert('ลบไม่สำเร็จ: ' + e.message);
     }
-  }
+    // (ไม่ต้อง setItems(...) แล้ว เพราะ Slice จะอัปเดต State ให้อัตโนมัติ!)
+  };
 
-  if (loading) return <div className="container-narrow py-10">กำลังโหลด...</div>
-  if (error) return <div className="container-narrow py-10 text-red-600">เกิดข้อผิดพลาด: {error}</div>
+  // (ส่วนที่เหลือของ JSX เหมือนเดิมได้เลย)
+  if (loading === 'pending') return <div className="container-narrow py-10">กำลังโหลด...</div>
+  if (loading === 'failed') return <div className="container-narrow py-10 text-red-600">เกิดข้อผิดพลาด: {error}</div>
 
   return (
     <main className="container-narrow py-6">
