@@ -16,7 +16,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/404" replace />} />
       </Routes>
       <footer className="mt-auto py-10 text-center text-xs text-gray-500">
-        © {new Date().getFullYear()} Product Shop
+        © {new Date().getFullYear()} FPQ Shop
       </footer>
     </div>
   )
