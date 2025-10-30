@@ -7,8 +7,10 @@ export class CreateProductDto {
     readonly price: number;
     @IsOptional()
     @IsString()
-    readonly desc?: string;
+    readonly description?: string;
     @IsOptional()
     @IsString()
-    readonly image?: string;
+    readonly imageUrl?: string;
+    @IsNumber()
+    readonly amount: number;
 }

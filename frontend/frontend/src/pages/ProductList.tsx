@@ -55,6 +55,7 @@ export default function ProductList() {
                 <div className="text-xs text-gray-500">ID: {String(id)}</div>
                 <div className="text-lg font-medium">{p.name}</div>
                 <div className="text-gray-900 font-semibold">฿ {Number(p.price || 0).toLocaleString()}</div>
+                <div className="text-sm text-gray-600">คงเหลือ: {p.amount ?? 0} ชิ้น</div>
                 {p.description && <div className="text-sm text-gray-600">คำอธิบาย: {p.description}</div>}
                 <div className="pt-2 flex items-center gap-2">
                   <Link to={`/products/${id}/edit`} className="btn btn-secondary">แก้ไข</Link>

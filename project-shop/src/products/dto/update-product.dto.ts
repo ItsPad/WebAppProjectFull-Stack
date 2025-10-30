@@ -9,8 +9,11 @@ export class UpdateProductDto {
     readonly price: number;
     @IsOptional()
     @IsString()
-    readonly desc?: string;
+    readonly description?: string;
     @IsOptional()
     @IsString()
-    readonly image?: string;
+    readonly imageUrl?: string;
+    @IsOptional()
+    @IsNumber()
+    readonly amount: number;
 }
