@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 // Redux
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '../app/store';
-import { fetchProducts, deleteProduct } from '../features/productSlice';
+import { fetchProducts, deleteProduct, addNewProduct} from '../features/productSlice';
 import type { Product } from '../types';
 
 type SortKey = 'price' | 'amount' | null;
@@ -19,6 +19,14 @@ export default function ProductList() {
   const [query, setQuery] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  // --- Bulk select state ---
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]);
+  };
+  const clearSelected = () => setSelectedIds([]);
+
 
   useEffect(() => {
     if (loading === 'idle') {
@@ -86,6 +94,41 @@ export default function ProductList() {
   }, [query, sortKey]);
 
   // คัดกรอง + เรียงลำดับด้วย useMemo เพื่อประสิทธิภาพ
+  
+  // --- Export CSV of current visible items ---
+  const exportCSV = () => {
+    const rows = [
+      ['ID','Name','Price','Amount','Active','Description','ImageUrl'],
+      ...visibleItems.map(p => [
+        String(getId(p)),
+        p.name ?? '',
+        String((p as any).price ?? ''),
+        String((p as any).amount ?? ''),
+        String((p as any).isActive ?? ''),
+        (p.description ?? '').replace(/\n/g, ' '),
+        p.imageUrl ?? ''
+      ])
+    ];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `products_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // --- Bulk delete selected ---
+  const bulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`ลบ ${selectedIds.length} รายการ?`)) return;
+    for (const id of selectedIds) {
+      try { await dispatch(deleteProduct(String(id))).unwrap(); } catch {}
+    }
+    clearSelected();
+  };
+
   const visibleItems = useMemo(() => {
     const q = query.trim().toLowerCase();
 
@@ -137,6 +180,13 @@ export default function ProductList() {
           )}
         </div>
         <div className="p-4 space-y-2">
+          {/* Select checkbox */}
+          <input
+            type="checkbox"
+            className="absolute top-2 right-2 scale-110"
+            checked={selectedIds.includes(String(id))}
+            onChange={() => toggleSelect(String(id))}
+          />
           <div className="text-xs text-gray-500 break-all">ID: {String(id)}</div>
           <div className="text-lg font-medium">{p.name}</div>
           <div className="text-gray-900 font-semibold">฿ {Number((p as any).price || 0).toLocaleString()}</div>
@@ -144,8 +194,29 @@ export default function ProductList() {
           {p.description && <div className="text-sm text-gray-600 line-clamp-3">คำอธิบาย: {p.description}</div>}
           <div className="pt-2 flex items-center gap-2">
             <Link to={`/products/${id}/edit`} className="btn btn-secondary">แก้ไข</Link>
+            <button
+              onClick={async () => {
+                const clone: any = { ...p, name: `${p.name} (copy)` };
+                delete clone._id; delete clone.id; delete clone.createdAt; delete clone.updatedAt;
+                try { await dispatch(addNewProduct(clone) as any).unwrap(); alert("ทำสำเนาสำเร็จ"); } catch (e) { alert("ทำสำเนาไม่สำเร็จ"); }
+              }}
+              className="btn btn-ghost"
+              title="ทำสำเนาสินค้า"
+            >ทำสำเนา</button>
             {/* <button onClick={() => onDelete(id)} className="btn btn-danger">ลบ</button> */}
           </div>
+        </div>
+
+        {/* Toolbar: Export & Bulk Delete */}
+        <div className="flex items-center gap-2">
+          <button className="btn btn-secondary" onClick={exportCSV}>ส่งออก CSV</button>
+          {selectedIds.length > 0 && (
+            <>
+              <span className="text-xs text-gray-500">เลือก {selectedIds.length} ชิ้น</span>
+              <button className="btn btn-danger" onClick={bulkDelete}>ลบที่เลือก</button>
+              <button className="btn btn-ghost" onClick={clearSelected}>ยกเลิกเลือก</button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -198,6 +269,18 @@ export default function ProductList() {
             <button onClick={clearSort} className="btn btn-ghost" title="ล้างการเรียง">
               รีเซ็ตเรียง
             </button>
+          )}
+        </div>
+
+        {/* Toolbar: Export & Bulk Delete */}
+        <div className="flex items-center gap-2">
+          <button className="btn btn-secondary" onClick={exportCSV}>ส่งออก CSV</button>
+          {selectedIds.length > 0 && (
+            <>
+              <span className="text-xs text-gray-500">เลือก {selectedIds.length} ชิ้น</span>
+              <button className="btn btn-danger" onClick={bulkDelete}>ลบที่เลือก</button>
+              <button className="btn btn-ghost" onClick={clearSelected}>ยกเลิกเลือก</button>
+            </>
           )}
         </div>
       </div>
