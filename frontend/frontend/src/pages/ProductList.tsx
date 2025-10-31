@@ -39,6 +39,20 @@ export default function ProductList() {
   // helper: ดึง id ทั้งจาก _id หรือ id
   const getId = (p: Product) => (p as any)._id ?? (p as any).id;
 
+  // helper: เช็คว่า match กับคำค้นหรือไม่
+  const matchesQuery = (p: Product, q: string) => {
+    const idStr = String(getId(p) ?? '');
+    const name = (p.name ?? '').toLowerCase();
+    const desc = (p.description ?? '').toLowerCase();
+    const _q = q.trim().toLowerCase();
+    return (
+      _q === '' ||
+      name.includes(_q) ||
+      desc.includes(_q) ||
+      idStr.toLowerCase().includes(_q)
+    );
+  };
+
   // toggle ฟังก์ชันสำหรับปุ่มเรียง
   const toggleSort = useCallback((key: SortKey) => {
     if (sortKey !== key) {
@@ -56,21 +70,26 @@ export default function ProductList() {
 
   const clearQuery = () => setQuery('');
 
+  // --- FEATURED: 1 ชิ้นที่ราคาแพงที่สุด (ไม่ผูกกับ query) ---
+  const featuredItem = useMemo(() => {
+    if (!items || items.length === 0) return null;
+    const priced = items.filter((p) => Number((p as any).price) > 0);
+    if (priced.length === 0) return null;
+    return priced.sort((a: any, b: any) => Number(b.price) - Number(a.price))[0];
+  }, [items]);
+
+  // --- NEW: เงื่อนไขซ่อน/แสดงสินค้าแนะนำ (ซ่อนเมื่อค้นหา หรือมีการกดเรียง)
+  const showFeatured = useMemo(() => {
+    const hasQuery = query.trim() !== '';
+    const hasSort = !!sortKey;
+    return !hasQuery && !hasSort; // โชว์เฉพาะตอน “ไม่ค้นหา” และ “ไม่กดเรียง”
+  }, [query, sortKey]);
+
   // คัดกรอง + เรียงลำดับด้วย useMemo เพื่อประสิทธิภาพ
   const visibleItems = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    let list = items.filter((p) => {
-      const idStr = String(getId(p) ?? '');
-      const name = (p.name ?? '').toLowerCase();
-      const desc = (p.description ?? '').toLowerCase();
-      return (
-        q === '' ||
-        name.includes(q) ||
-        desc.includes(q) ||
-        idStr.toLowerCase().includes(q)
-      );
-    });
+    let list = items.filter((p) => matchesQuery(p, q));
 
     if (sortKey) {
       list = [...list].sort((a, b) => {
@@ -98,6 +117,39 @@ export default function ProductList() {
       {active ? (sortOrder === 'asc' ? '↑' : '↓') : '↕'}
     </span>
   );
+
+  // UI ชิ้นส่วนย่อยของการ์ด (ใช้ซ้ำสำหรับรายการหลัก)
+  const ProductCard = ({ p }: { p: Product }) => {
+    const id = getId(p);
+    const isRec = (p as any)?.isRecommended === true;
+    return (
+      <div key={String(id)} className="card overflow-hidden transition-all duration-500 hover:shadow-lg hover:scale-[1.02]">
+        <div className="aspect-[4/3] bg-white overflow-hidden relative">
+          {p.imageUrl ? (
+            <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-400">ไม่มีรูป</div>
+          )}
+          {isRec && (
+            <span className="absolute top-2 left-2 rounded-full bg-black/80 text-white text-xs px-2 py-1">
+              แนะนำ
+            </span>
+          )}
+        </div>
+        <div className="p-4 space-y-2">
+          <div className="text-xs text-gray-500 break-all">ID: {String(id)}</div>
+          <div className="text-lg font-medium">{p.name}</div>
+          <div className="text-gray-900 font-semibold">฿ {Number((p as any).price || 0).toLocaleString()}</div>
+          <div className="text-sm text-gray-600">คงเหลือ: {Number((p as any).amount ?? 0)} ชิ้น</div>
+          {p.description && <div className="text-sm text-gray-600 line-clamp-3">คำอธิบาย: {p.description}</div>}
+          <div className="pt-2 flex items-center gap-2">
+            <Link to={`/products/${id}/edit`} className="btn btn-secondary">แก้ไข</Link>
+            {/* <button onClick={() => onDelete(id)} className="btn btn-danger">ลบ</button> */}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <main className="container-narrow py-6">
@@ -150,6 +202,59 @@ export default function ProductList() {
         </div>
       </div>
 
+      {/* --- FEATURED: สินค้าราคาแพงที่สุด 1 ชิ้นใหญ่ตรงกลาง (ซ่อนเมื่อค้นหา/เรียง) --- */}
+      {showFeatured && featuredItem && (
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold text-center mb-4"> สินค้าแนะนำประจำร้าน !!!</h2>
+          <div className="flex justify-center">
+            <div className="w-full max-w-md rounded-2xl overflow-hidden shadow-lg border border-gray-200 hover:shadow-2xl transition-all bg-white">
+              <div className="aspect-[4/3] bg-gray-50 relative overflow-hidden">
+                {featuredItem.imageUrl ? (
+                  <img
+                    src={featuredItem.imageUrl}
+                    alt={featuredItem.name}
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center w-full h-full text-gray-400">
+                    ไม่มีรูป
+                  </div>
+                )}
+                <span className="absolute top-3 left-3 bg-black/80 text-white text-xs px-3 py-1 rounded-full">
+                  ราคาสูงสุด
+                </span>
+              </div>
+
+              <div className="p-6 text-center space-y-3">
+                <div className="text-sm text-gray-500">
+                  ID: {String((featuredItem as any)._id ?? (featuredItem as any).id)}
+                </div>
+                <h3 className="text-2xl font-semibold text-gray-900">{featuredItem.name}</h3>
+                <div className="text-3xl font-bold text-red-600">
+                  ฿ {Number((featuredItem as any).price || 0).toLocaleString()}
+                </div>
+                <p className="text-gray-700 text-sm">
+                  คงเหลือ: {Number((featuredItem as any).amount ?? 0)} ชิ้น
+                </p>
+                {featuredItem.description && (
+                  <p className="text-gray-600 text-sm leading-relaxed max-w-md mx-auto">
+                    {featuredItem.description}
+                  </p>
+                )}
+                <div className="pt-3">
+                  <Link
+                    to={`/products/${(featuredItem as any)._id ?? (featuredItem as any).id}/edit`}
+                    className="btn btn-primary px-6 py-2 text-lg"
+                  >
+                    ดูรายละเอียด / แก้ไข
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* แถบสถานะเล็ก ๆ */}
       <div className="text-sm text-gray-500 mb-3">
         แสดง {visibleItems.length} รายการ
@@ -166,32 +271,9 @@ export default function ProductList() {
       </div>
 
       <div className="grid-cards">
-        {visibleItems.map((p) => {
-          const id = getId(p);
-          return (
-            <div key={String(id)} className="card overflow-hidden transition-all duration-500 hover:shadow-lg hover:scale-[1.02]">
-              <div className="aspect-[4/3] bg-white overflow-hidden">
-                {p.imageUrl ? (
-                  <img src={p.imageUrl} alt={p.name} className="w-full h-full object-contain" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">ไม่มีรูป</div>
-                )}
-              </div>
-              <div className="p-4 space-y-2">
-                <div className="text-xs text-gray-500 break-all">ID: {String(id)}</div>
-                <div className="text-lg font-medium">{p.name}</div>
-                <div className="text-gray-900 font-semibold">฿ {Number(p.price || 0).toLocaleString()}</div>
-                <div className="text-sm text-gray-600">คงเหลือ: {Number((p as any).amount ?? 0)} ชิ้น</div>
-                {p.description && <div className="text-sm text-gray-600 line-clamp-3">คำอธิบาย: {p.description}</div>}
-                <div className="pt-2 flex items-center gap-2">
-                  <Link to={`/products/${id}/edit`} className="btn btn-secondary">แก้ไข</Link>
-                  {/* ถ้าต้องการปุ่มลบ ให้เปิดคอมเมนต์ด้านล่าง */}
-                  {/* <button onClick={() => onDelete(id)} className="btn btn-danger">ลบ</button> */}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+        {visibleItems.map((p) => (
+          <ProductCard key={String(getId(p))} p={p} />
+        ))}
       </div>
 
       {visibleItems.length === 0 && (
