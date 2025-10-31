@@ -208,8 +208,7 @@ export default function ProductList() {
         </div>
 
         {/* Toolbar: Export & Bulk Delete */}
-        <div className="flex items-center gap-2">
-          <button className="btn btn-secondary" onClick={exportCSV}>ส่งออก CSV</button>
+        <div className="flex items-right gap-2">
           {selectedIds.length > 0 && (
             <>
               <span className="text-xs text-gray-500">เลือก {selectedIds.length} ชิ้น</span>
@@ -329,7 +328,7 @@ export default function ProductList() {
                     to={`/products/${(featuredItem as any)._id ?? (featuredItem as any).id}/edit`}
                     className="btn btn-primary px-6 py-2 text-lg"
                   >
-                    ดูรายละเอียด / แก้ไข
+                    แก้ไขข้อมูลสินค้า
                   </Link>
                 </div>
               </div>
